@@ -10,10 +10,11 @@ Reference is C99:
 
 __docformat__ = 'restructuredtext'
 
-import os, re, shlex, sys, tokenize, lex, yacc, traceback, subprocess
+import os, re, shlex, sys, tokenize, traceback, subprocess
 import ctypes
-from lex import TOKEN
-import pplexer
+from . import yacc,lex
+from .lex import TOKEN
+from . import pplexer
 
 # --------------------------------------------------------------------------
 # Lexers
@@ -104,7 +105,7 @@ def create_token(type, value, production=None):
 class PreprocessorParser(object):
     def __init__(self,options,cparser):
         self.defines = ["inline=", "__inline__=", "__extension__=",
-                        "__const=const", "__asm__(x)=",
+                        "_Bool=uint8_t", "__const=const", "__asm__(x)=",
                         "__asm(x)=", "CTYPESGEN=1"]
 
         # On OSX, explicitly add these defines to keep from getting syntax
@@ -140,7 +141,7 @@ class PreprocessorParser(object):
             cmd += " -I%s" % path
         for define in self.defines:
             cmd += ' "-D%s"' % define
-        cmd += ' "' + filename + '"'
+        cmd += " " + filename
 
         self.cparser.handle_status(cmd)
 

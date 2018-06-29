@@ -25,7 +25,7 @@ class Declaration(object):
         }
         if self.storage:
             d['storage'] = self.storage
-        l = ['%s=%r' % (k, v) for k, v in d.items()]
+        l = ['%s=%r' % (k, v) for k, v in list(d.items())]
         return 'Declaration(%s)' % ', '.join(l)
 
 class Declarator(object):
@@ -94,7 +94,7 @@ class Parameter(object):
             d['declarator'] = self.declarator
         if self.storage:
             d['storage'] = self.storage
-        l = ['%s=%r' % (k, v) for k, v in d.items()]
+        l = ['%s=%r' % (k, v) for k, v in list(d.items())]
         return 'Parameter(%s)' % ', '.join(l)
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# -*- coding: us-ascii -*-
+# -*- coding: ascii -*-
 # vim:ts=4:sw=4:softtabstop=4:smarttab:expandtab
 """Examples:
 
@@ -19,7 +19,6 @@ setup(name='ctypesgen',
     license='BSD License',
     packages=['ctypesgencore',
         'ctypesgencore.parser',
-        'ctypesgencore.printer_python',
-        'ctypesgencore.printer_json',
+        'ctypesgencore.printer',
         'ctypesgencore.processor'],
     scripts=['ctypesgen.py'])

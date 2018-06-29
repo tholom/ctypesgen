@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# -*- coding: us-ascii -*-
+# -*- coding: ascii -*-
 # vim:ts=4:sw=4:softtabstop=4:smarttab:expandtab
 
 def find_names_in_modules(modules):
@@ -44,7 +44,7 @@ if __name__=="__main__":
 
     # Parameters
     op.add_option('-o', '--output', dest='output', metavar='FILE',
-        help='write wrapper to FILE [default stdout]')
+        help='write wrapper to FILE')
     op.add_option('-l', '--library', dest='libraries', action='append',
         default=[], metavar='LIBRARY', help='link to LIBRARY')
     op.add_option('', '--include', dest='other_headers', action='append',
@@ -90,15 +90,6 @@ if __name__=="__main__":
         default=None, help='regular expression for symbols to always include')
     op.add_option('-x', '--exclude-symbols', dest='exclude_symbols',
         default=None, help='regular expression for symbols to exclude')
-    op.add_option('', '--no-stddef-types', action='store_true',
-        dest='no_stddef_types', default=False,
-        help='Do not support extra C types from stddef.h')
-    op.add_option('', '--no-gnu-types', action='store_true',
-        dest='no_gnu_types', default=False,
-        help='Do not support extra GNU C types')
-    op.add_option('', '--no-python-types', action='store_true',
-        dest='no_python_types', default=False,
-        help='Do not support extra C types built in to Python')
 
     # Printer options
     op.add_option('', '--header-template', dest='header_template', default=None,
@@ -110,9 +101,6 @@ if __name__=="__main__":
     op.add_option('', '--insert-file', dest='inserted_files', default=[],
         action='append', metavar='FILENAME',
         help='Add the contents of FILENAME to the end of the wrapper file.')
-    op.add_option('', '--output-language', dest='output_language', metavar='LANGUAGE',
-        default='python',
-        help="Choose output language (`json' or `python' [default])")
 
     # Error options
     op.add_option('', "--all-errors", action="store_true", default=False,
@@ -137,18 +125,12 @@ if __name__=="__main__":
         msgs.error_message('No header files specified', cls='usage')
         sys.exit(1)
 
+    if options.output is None:
+        msgs.error_message('No output file specified', cls='usage')
+        sys.exit(1)
+
     if len(options.libraries) == 0:
         msgs.warning_message('No libraries specified', cls='usage')
-
-    # Check output language
-    printer = None
-    if options.output_language == "python":
-        printer = ctypesgencore.printer_python.WrapperPrinter
-    elif options.output_language == "json":
-        printer = ctypesgencore.printer_json.WrapperPrinter
-    else:
-        msgs.error_message("No such output language `" + options.output_language + "'", cls='usage')
-        sys.exit(1)
 
     # Step 1: Parse
     descriptions=ctypesgencore.parser.parse(options.headers,options)
@@ -157,7 +139,7 @@ if __name__=="__main__":
     ctypesgencore.processor.process(descriptions,options)
 
     # Step 3: Print
-    printer(options.output,options,descriptions)
+    ctypesgencore.printer.WrapperPrinter(options.output,options,descriptions)
 
     msgs.status_message("Wrapping complete.")
 

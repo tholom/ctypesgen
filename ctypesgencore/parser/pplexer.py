@@ -10,9 +10,10 @@ Reference is C99:
 
 __docformat__ = 'restructuredtext'
 
-import os, re, shlex, sys, tokenize, lex, yacc, traceback
+import os, re, shlex, sys, tokenize, traceback
+from . import lex,yacc
 import ctypes
-from lex import TOKEN
+from .lex import TOKEN
 
 tokens = (
     'HEADER_NAME', 'IDENTIFIER', 'PP_NUMBER', 'CHARACTER_CONSTANT',
@@ -57,7 +58,8 @@ class StringLiteral(str):
     def __new__(cls, value):
         assert value[0] == '"' and value[-1] == '"'
         # Unescaping probably not perfect but close enough.
-        value = value[1:-1].decode('string_escape')
+        #value = value[1:-1].decode('string_escape')
+        value = value[1:-1].encode('utf-8').decode('unicode_escape')
         return str.__new__(cls, value)
 
 # --------------------------------------------------------------------------
@@ -118,8 +120,8 @@ punctuators = {
 }
 
 def punctuator_regex(punctuators):
-    punctuator_regexes = [v[0] for v in punctuators.values()]
-    punctuator_regexes.sort(lambda a, b: -cmp(len(a), len(b)))
+    punctuator_regexes = [v[0] for v in list(punctuators.values())]
+    punctuator_regexes.sort(key=len, reverse=True)
     return '(%s)' % '|'.join(punctuator_regexes)
 
 # Process line-number directives from the preprocessor
@@ -212,10 +214,11 @@ def t_ANY_int(t):
     g1 = m.group(2)
     if g1.startswith("0x"):
         # Convert base from hexadecimal
-        g1 = str(long(g1[2:],16))
+        g1 = str(int(g1[2:],16))
     elif g1[0]=="0":
         # Convert base from octal
-        g1 = str(long(g1,8))
+        try: g1 = str(int(g1,8))
+        except: g1 = str(int(g1))
 
     t.value = prefix + g1
 

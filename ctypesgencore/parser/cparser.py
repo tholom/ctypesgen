@@ -16,10 +16,10 @@ import sys
 import time
 import warnings
 
-import preprocessor
-import yacc
-import cgrammar
-import cdeclarations
+from . import preprocessor
+from . import yacc
+from . import cgrammar
+from . import cdeclarations
 
 # --------------------------------------------------------------------------
 # Lexer
@@ -77,7 +77,7 @@ class CParser(object):
     Subclass and override the handle_* methods.  Call `parse` with a string
     to parse.
     '''
-    def __init__(self, options):
+    def __init__(self, options, stddef_types=True, gnu_types=True):
         self.preprocessor_parser = preprocessor.PreprocessorParser(options,self)
         self.parser = yacc.Parser()
         prototype = yacc.yacc(method        = 'LALR',
@@ -94,13 +94,13 @@ class CParser(object):
         self.parser.cparser = self
 
         self.lexer = CLexer(self)
-        if not options.no_stddef_types:
+        if stddef_types:
             self.lexer.type_names.add('wchar_t')
             self.lexer.type_names.add('ptrdiff_t')
             self.lexer.type_names.add('size_t')
-        if not options.no_gnu_types:
+        if gnu_types:
             self.lexer.type_names.add('__builtin_va_list')
-        if sys.platform == 'win32' and not options.no_python_types:
+        if sys.platform == 'win32':
             self.lexer.type_names.add('__int64')
 
     def parse(self, filename, debug=False):
@@ -126,7 +126,7 @@ class CParser(object):
         The parser will try to recover from errors by synchronising at the
         next semicolon.
         '''
-        print >> sys.stderr, '%s:%s %s' % (filename, lineno, message)
+        print('%s:%s %s' % (filename, lineno, message), file=sys.stderr)
 
     def handle_pp_error(self, message):
         '''The C preprocessor emitted an error.
@@ -134,14 +134,14 @@ class CParser(object):
         The default implementatin prints the error to stderr. If processing
         can continue, it will.
         '''
-        print >> sys.stderr, 'Preprocessor:', message
+        print('Preprocessor:', message, file=sys.stderr)
 
     def handle_status(self, message):
         '''Progress information.
 
         The default implementationg prints message to stderr.
         '''
-        print >> sys.stderr, message
+        print(message, file=sys.stderr)
 
     def handle_define(self, name, params, value, filename, lineno):
         '''#define `name` `value`
@@ -196,13 +196,13 @@ class DebugCParser(CParser):
     '''
 
     def handle_define(self, name, value, filename, lineno):
-        print '#define name=%r, value=%r' % (name, value)
+        print('#define name=%r, value=%r' % (name, value))
 
     def handle_define_constant(self, name, value, filename, lineno):
-        print '#define constant name=%r, value=%r' % (name, value)
+        print('#define constant name=%r, value=%r' % (name, value))
 
     def handle_declaration(self, declaration, filename, lineno):
-        print declaration
+        print(declaration)
 
 if __name__ == '__main__':
     DebugCParser().parse(sys.argv[1], debug=True)

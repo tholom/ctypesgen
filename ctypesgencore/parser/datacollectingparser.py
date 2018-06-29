@@ -7,7 +7,7 @@ After parsing is complete, a DescriptionCollection object can be retrieved by
 calling DataCollectingParser.data().
 """
 
-import ctypesparser
+from . import ctypesparser
 from ctypesgencore.descriptions import *
 from ctypesgencore.ctypedescs import *
 from ctypesgencore.expressions import *
@@ -61,9 +61,9 @@ class DataCollectingParser(ctypesparser.CtypesParser,
         fd, fname = mkstemp(suffix=".h")
         f = os.fdopen(fd, 'w')
         for header in self.options.other_headers:
-            print >>f, '#include <%s>' % header
+            print('#include <%s>' % header, file=f)
         for header in self.headers:
-            print >>f, '#include "%s"' % os.path.abspath(header)
+            print('#include "%s"' % os.path.abspath(header), file=f)
         f.flush()
         f.close()
         ctypesparser.CtypesParser.parse(self, fname, None)
@@ -218,7 +218,7 @@ class DataCollectingParser(ctypesparser.CtypesParser,
         if ctypeenum.opaque:
             if tag not in self.already_seen_opaque_enums:
                 enum=EnumDescription(ctypeenum.tag,
-                             None,
+                             ctypeenum.enumerators,
                              ctypeenum,
                              src = (filename,str(lineno)))
                 enum.opaque = True
@@ -235,13 +235,12 @@ class DataCollectingParser(ctypesparser.CtypesParser,
                 enum.opaque = False
                 enum.ctype = ctypeenum
                 enum.src = ctypeenum.src
-                enum.members = ctypeenum.enumerators
 
                 del self.already_seen_opaque_enums[tag]
 
             else:
                 enum=EnumDescription(ctypeenum.tag,
-                                ctypeenum.enumerators,
+                                None,
                                 src=(filename,str(lineno)),
                                 ctype=ctypeenum)
                 enum.opaque = False

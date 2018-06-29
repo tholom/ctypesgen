@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# -*- coding: us-ascii -*-
+# -*- coding: ascii -*-
 # vim:ts=4:sw=4:softtabstop=4:smarttab:expandtab
 
 """
@@ -44,7 +44,7 @@ parser, processor, and printer modules use to pass information. They are:
 format.
 """
 
-__version__ = '0.0'
+__version__ = '0.r125'
 VERSION = __version__
 
 __all__ = ["parser","processor","printer",
@@ -52,21 +52,15 @@ __all__ = ["parser","processor","printer",
            "messages","options"]
 
 # Workhorse modules
-import parser
-import processor
-import printer_python
-try:
-    import printer_json
-except ImportError:
-    pass
+from . import parser
+from . import processor
+from . import printer
 
 # Modules describing internal format
-import descriptions
-import ctypedescs
-import expressions
+from . import descriptions
+from . import ctypedescs
+from . import expressions
 
 # Helper modules
-import messages
-import options
-
-printer = printer_python  # Default the printer to generating Python
+from . import messages
+from . import options

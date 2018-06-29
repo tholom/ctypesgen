@@ -69,7 +69,7 @@ default_lr  = 'LALR'           # Default LR table generation method
 
 error_count = 3                # Number of symbols that must be shifted to leave recovery mode
 
-import re, types, sys, cStringIO, os.path
+import re, types, sys, io, os.path
 
 # <tm> 1 July 2008
 try:
@@ -124,7 +124,7 @@ class YaccProduction:
         self.stack = stack
 
     def __getitem__(self,n):
-        if type(n) == types.IntType:
+        if type(n) == int:
             if n >= 0: return self.slice[n].value
             else: return self.stack[n].value
         else:
@@ -217,7 +217,7 @@ class Parser:
 
         # If no lexer was given, we will try to use the lex module
         if not lexer:
-            import lex
+            from . import lex
             lexer = lex.lexer
 
         pslice.lexer = lexer
@@ -248,8 +248,8 @@ class Parser:
             # Get the next symbol on the input.  If a lookahead symbol
             # is already set, we just use that. Otherwise, we'll pull
             # the next token off of the lookaheadstack or from the lexer
-            if debug > 1:
-                print 'state', statestack[-1]
+            if False:#debug > 1:
+                print('state', statestack[-1])
             if not lookahead:
                 if not lookaheadstack:
                     lookahead = get_token()     # Get the next token
@@ -267,8 +267,8 @@ class Parser:
             ltype = lookahead.type
             t = actions.get((s,ltype),None)
 
-            if debug > 1:
-                print 'action', t
+            if False:#debug > 1:
+                print('action', t)
             if t is not None:
                 if t > 0:
                     # shift a symbol on the stack
@@ -277,7 +277,7 @@ class Parser:
                         sys.stderr.write("yacc: Parse error. EOF\n")
                         return
                     statestack.append(t)
-                    if debug > 1:
+                    if False:#debug > 1:
                         sys.stderr.write("%-60s shift state %s\n" % (errorlead, t))
                     symstack.append(lookahead)
                     lookahead = None
@@ -298,7 +298,7 @@ class Parser:
                     sym = YaccSymbol()
                     sym.type = pname       # Production name
                     sym.value = None
-                    if debug > 1:
+                    if False:#debug > 1:
                         sys.stderr.write("%-60s reduce %d\n" % (errorlead, -t))
 
                     if plen:
@@ -484,17 +484,17 @@ def validate_file(filename):
 
 # This function looks for functions that might be grammar rules, but which don't have the proper p_suffix.
 def validate_dict(d):
-    for n,v in d.items():
+    for n,v in list(d.items()):
         if n[0:2] == 'p_' and type(v) in (types.FunctionType, types.MethodType): continue
         if n[0:2] == 't_': continue
 
         if n[0:2] == 'p_':
             sys.stderr.write("yacc: Warning. '%s' not defined as a function\n" % n)
-        if 1 and isinstance(v,types.FunctionType) and v.func_code.co_argcount == 1:
+        if 1 and isinstance(v,types.FunctionType) and v.__code__.co_argcount == 1:
             try:
                 doc = v.__doc__.split(" ")
                 if doc[1] == ':':
-                    sys.stderr.write("%s:%d: Warning. Possible grammar rule '%s' defined without p_ prefix.\n" % (v.func_code.co_filename, v.func_code.co_firstlineno,n))
+                    sys.stderr.write("%s:%d: Warning. Possible grammar rule '%s' defined without p_ prefix.\n" % (v.__code__.co_filename, v.__code__.co_firstlineno,n))
             except Exception:
                 pass
 
@@ -548,8 +548,8 @@ def initialize_vars():
 
     # File objects used when creating the parser.out debugging file
     global _vf, _vfc
-    _vf           = cStringIO.StringIO()
-    _vfc          = cStringIO.StringIO()
+    _vf           = io.StringIO()
+    _vfc          = io.StringIO()
 
 # -----------------------------------------------------------------------------
 # class Production:
@@ -577,7 +577,7 @@ def initialize_vars():
 
 class Production:
     def __init__(self,**kw):
-        for k,v in kw.items():
+        for k,v in list(kw.items()):
             setattr(self,k,v)
         self.lr_index = -1
         self.lr0_added = 0    # Flag indicating whether or not added to LR0 closure
@@ -615,7 +615,7 @@ class Production:
         # Precompute list of productions immediately following
         try:
             p.lrafter = Prodnames[p.prod[n+1]]
-        except (IndexError,KeyError),e:
+        except (IndexError,KeyError) as e:
             p.lrafter = []
         try:
             p.lrbefore = p.prod[n-1]
@@ -756,8 +756,8 @@ def add_production(f,file,line,prodname,syms):
 # and adds rules to the grammar
 
 def add_function(f):
-    line = f.func_code.co_firstlineno
-    file = f.func_code.co_filename
+    line = f.__code__.co_firstlineno
+    file = f.__code__.co_filename
     error = 0
 
     if isinstance(f,types.MethodType):
@@ -765,11 +765,11 @@ def add_function(f):
     else:
         reqdargs = 1
 
-    if f.func_code.co_argcount > reqdargs:
+    if f.__code__.co_argcount > reqdargs:
         sys.stderr.write("%s:%d: Rule '%s' has too many arguments.\n" % (file,line,f.__name__))
         return -1
 
-    if f.func_code.co_argcount < reqdargs:
+    if f.__code__.co_argcount < reqdargs:
         sys.stderr.write("%s:%d: Rule '%s' requires an argument.\n" % (file,line,f.__name__))
         return -1
 
@@ -827,12 +827,12 @@ def compute_reachable():
     (Unused terminals have already had their warning.)
     '''
     Reachable = { }
-    for s in Terminals.keys() + Nonterminals.keys():
+    for s in list(Terminals.keys()) + list(Nonterminals.keys()):
         Reachable[s] = 0
 
     mark_reachable_from( Productions[0].prod[0], Reachable )
 
-    for s in Nonterminals.keys():
+    for s in list(Nonterminals.keys()):
         if not Reachable[s]:
             sys.stderr.write("yacc: Symbol '%s' is unreachable.\n" % s)
 
@@ -862,7 +862,7 @@ def compute_terminates():
     Terminates = {}
 
     # Terminals:
-    for t in Terminals.keys():
+    for t in list(Terminals.keys()):
         Terminates[t] = 1
 
     Terminates['$end'] = 1
@@ -870,13 +870,13 @@ def compute_terminates():
     # Nonterminals:
 
     # Initialize to false:
-    for n in Nonterminals.keys():
+    for n in list(Nonterminals.keys()):
         Terminates[n] = 0
 
     # Then propagate termination until no change:
     while True:
         some_change = 0
-        for (n,pl) in Prodnames.items():
+        for (n,pl) in list(Prodnames.items()):
             # Nonterminal n terminates iff any of its productions terminates.
             for p in pl:
                 # Production p terminates iff all of its rhs symbols terminate.
@@ -904,7 +904,7 @@ def compute_terminates():
             break
 
     some_error = 0
-    for (s,terminates) in Terminates.items():
+    for (s,terminates) in list(Terminates.items()):
         if not terminates:
             if s not in Prodnames and s not in Terminals and s != 'error':
                 # s is used-but-not-defined, and we've already warned of that,
@@ -936,7 +936,7 @@ def verify_productions(cycle_check=1):
     # Now verify all of the tokens
     if yaccdebug:
         _vf.write("Unused terminals:\n\n")
-    for s,v in Terminals.items():
+    for s,v in list(Terminals.items()):
         if s != 'error' and not v:
             sys.stderr.write("yacc: Warning. Token '%s' defined, but not used.\n" % s)
             if yaccdebug: _vf.write("   %s\n"% s)
@@ -950,7 +950,7 @@ def verify_productions(cycle_check=1):
 
     unused_prod = 0
     # Verify the use of all productions
-    for s,v in Nonterminals.items():
+    for s,v in list(Nonterminals.items()):
         if not v:
             p = Prodnames[s][0]
             sys.stderr.write("%s:%d: Warning. Rule '%s' defined, but not used.\n" % (p.file,p.line, s))
@@ -969,12 +969,12 @@ def verify_productions(cycle_check=1):
 
     if yaccdebug:
         _vf.write("\nTerminals, with rules where they appear\n\n")
-        ks = Terminals.keys()
+        ks = list(Terminals.keys())
         ks.sort()
         for k in ks:
             _vf.write("%-20s : %s\n" % (k, " ".join([str(s) for s in Terminals[k]])))
         _vf.write("\nNonterminals, with rules where they appear\n\n")
-        ks = Nonterminals.keys()
+        ks = list(Nonterminals.keys())
         ks.sort()
         for k in ks:
             _vf.write("%-20s : %s\n" % (k, " ".join([str(s) for s in Nonterminals[k]])))
@@ -1107,7 +1107,7 @@ def first(beta):
 
 def compute_follow(start=None):
     # Add '$end' to the follow list of the start symbol
-    for k in Nonterminals.keys():
+    for k in list(Nonterminals.keys()):
         Follow[k] = [ ]
 
     if not start:
@@ -1141,7 +1141,7 @@ def compute_follow(start=None):
 
     if 0 and yaccdebug:
         _vf.write('\nFollow:\n')
-        for k in Nonterminals.keys():
+        for k in list(Nonterminals.keys()):
             _vf.write("%-20s : %s\n" % (k, " ".join([str(s) for s in Follow[k]])))
 
 # -------------------------------------------------------------------------
@@ -1152,7 +1152,7 @@ def compute_follow(start=None):
 def compute_first1():
 
     # Terminals:
-    for t in Terminals.keys():
+    for t in list(Terminals.keys()):
         First[t] = [t]
 
     First['$end'] = ['$end']
@@ -1161,13 +1161,13 @@ def compute_first1():
     # Nonterminals:
 
     # Initialize to the empty set:
-    for n in Nonterminals.keys():
+    for n in list(Nonterminals.keys()):
         First[n] = []
 
     # Then propagate symbols until no change:
     while True:
         some_change = 0
-        for n in Nonterminals.keys():
+        for n in list(Nonterminals.keys()):
             for p in Prodnames[n]:
                 for f in first(p.prod):
                     if f not in First[n]:
@@ -1178,7 +1178,7 @@ def compute_first1():
 
     if 0 and yaccdebug:
         _vf.write('\nFirst:\n')
-        for k in Nonterminals.keys():
+        for k in list(Nonterminals.keys()):
             _vf.write("%-20s : %s\n" %
                 (k, " ".join([str(s) for s in First[k]])))
 
@@ -1290,7 +1290,7 @@ def lr0_items():
             for s in ii.usyms:
                 asyms[s] = None
 
-        for x in asyms.keys():
+        for x in list(asyms.keys()):
             g = lr0_goto(I,x)
             if not g:  continue
             if id(g) in _lr0_cidhash: continue
@@ -1547,11 +1547,11 @@ def traverse(x,N,stack,F,X,R,FP):
         for a in F.get(y,[]):
             if a not in F[x]: F[x].append(a)
     if N[x] == d:
-        N[stack[-1]] = sys.maxint
+        N[stack[-1]] = sys.maxsize
         F[stack[-1]] = F[x]
         element = stack.pop()
         while element != x:
-            N[stack[-1]] = sys.maxint
+            N[stack[-1]] = sys.maxsize
             F[stack[-1]] = F[x]
             element = stack.pop()
 
@@ -1608,7 +1608,7 @@ def compute_follow_sets(ntrans,readsets,inclsets):
 # -----------------------------------------------------------------------------
 
 def add_lookaheads(lookbacks,followset):
-    for trans,lb in lookbacks.items():
+    for trans,lb in list(lookbacks.items()):
         # Loop over productions in lookback
         for state,p in lb:
             if state not in p.lookaheads:
@@ -1785,7 +1785,7 @@ def lr_parse_table(method):
                                 action[st,a] = j
                                 actionp[st,a] = p
 
-            except Exception,e:
+            except Exception as e:
                 raise YaccError("Hosed in lr_parse_table").with_traceback(e)
 
         # Print the actions associated with each terminal
@@ -1812,7 +1812,7 @@ def lr_parse_table(method):
             for s in ii.usyms:
                 if s in Nonterminals:
                     nkeys[s] = None
-        for n in nkeys.keys():
+        for n in list(nkeys.keys()):
             g = lr0_goto(I,n)
             j = _lr0_cidhash.get(id(g),-1)
             if j >= 0:
@@ -1863,7 +1863,7 @@ _lr_signature = %s
         if smaller:
             items = { }
 
-            for k,v in _lr_action.items():
+            for k,v in list(_lr_action.items()):
                 i = items.get(k[1])
                 if not i:
                     i = ([],[])
@@ -1872,7 +1872,7 @@ _lr_signature = %s
                 i[1].append(v)
 
             f.write("\n_lr_action_items = {")
-            for k,v in items.items():
+            for k,v in list(items.items()):
                 f.write("%r:([" % k)
                 for i in v[0]:
                     f.write("%r," % i)
@@ -1893,7 +1893,7 @@ del _lr_action_items
 
         else:
             f.write("\n_lr_action = { ");
-            for k,v in _lr_action.items():
+            for k,v in list(_lr_action.items()):
                 f.write("(%r,%r):%r," % (k[0],k[1],v))
             f.write("}\n");
 
@@ -1901,7 +1901,7 @@ del _lr_action_items
             # Factor out names to try and make smaller
             items = { }
 
-            for k,v in _lr_goto.items():
+            for k,v in list(_lr_goto.items()):
                 i = items.get(k[1])
                 if not i:
                     i = ([],[])
@@ -1910,7 +1910,7 @@ del _lr_action_items
                 i[1].append(v)
 
             f.write("\n_lr_goto_items = {")
-            for k,v in items.items():
+            for k,v in list(items.items()):
                 f.write("%r:([" % k)
                 for i in v[0]:
                     f.write("%r," % i)
@@ -1930,7 +1930,7 @@ del _lr_goto_items
 """)
         else:
             f.write("\n_lr_goto = { ");
-            for k,v in _lr_goto.items():
+            for k,v in list(_lr_goto.items()):
                 f.write("(%r,%r):%r," % (k[0],k[1],v))
             f.write("}\n");
 
@@ -1948,15 +1948,15 @@ del _lr_goto_items
 
         f.close()
 
-    except IOError,e:
-        print "Unable to create '%s'" % filename
-        print e
+    except IOError as e:
+        print("Unable to create '%s'" % filename)
+        print(e)
         return
 
 def lr_read_tables(module=tab_module,optimize=0):
     global _lr_action, _lr_goto, _lr_productions, _lr_method
     try:
-        exec "import %s as parsetab" % module
+        exec("import %s as parsetab" % module)
 
         if (optimize) or (Signature.digest() == parsetab._lr_signature):
             _lr_action = parsetab._lr_action
@@ -1976,9 +1976,9 @@ def lr_read_tables(module=tab_module,optimize=0):
 # with Python 2.0 where types.ObjectType is undefined.
 
 try:
-    _INSTANCETYPE = (types.InstanceType, types.ObjectType)
+    _INSTANCETYPE = (types.InstanceType, object)
 except AttributeError:
-    _INSTANCETYPE = types.InstanceType
+    _INSTANCETYPE = object # types.InstanceType
 
 # -----------------------------------------------------------------------------
 # yacc(module)
@@ -1997,7 +1997,7 @@ def yacc(method=default_lr, debug=yaccdebug, module=None, tabmodule=tab_module, 
 
 
     # Add parsing method to signature
-    Signature.update(method)
+    Signature.update(method.encode('utf-8'))
 
     # If a "module" parameter was supplied, extract its dictionary.
     # Note: a module may in fact be an instance as well.
@@ -2059,23 +2059,23 @@ def yacc(method=default_lr, debug=yaccdebug, module=None, tabmodule=tab_module, 
 
         if not tokens:
             raise YaccError("module does not define a list 'tokens'")
-        if not (isinstance(tokens,types.ListType) or isinstance(tokens,types.TupleType)):
+        if not (isinstance(tokens,list) or isinstance(tokens,tuple)):
             raise YaccError("tokens must be a list or tuple.")
 
         # Check to see if a requires dictionary is defined.
         requires = ldict.get("require",None)
         if requires:
-            if not (isinstance(requires,types.DictType)):
+            if not (isinstance(requires,dict)):
                 raise YaccError("require must be a dictionary.")
 
-            for r,v in requires.items():
+            for r,v in list(requires.items()):
                 try:
-                    if not (isinstance(v,types.ListType)):
+                    if not (isinstance(v,list)):
                         raise TypeError
                     v1 = [x.split(".") for x in v]
                     Requires[r] = v1
                 except Exception:
-                    print "Invalid specification for rule '%s' in require. Expected a list of strings" % r
+                    print("Invalid specification for rule '%s' in require. Expected a list of strings" % r)
 
 
         # Build the dictionary of terminals.  We a record a 0 in the
@@ -2083,12 +2083,12 @@ def yacc(method=default_lr, debug=yaccdebug, module=None, tabmodule=tab_module, 
         # used in the grammar
 
         if 'error' in tokens:
-            print "yacc: Illegal token 'error'.  Is a reserved word."
+            print("yacc: Illegal token 'error'.  Is a reserved word.")
             raise YaccError("Illegal token name")
 
         for n in tokens:
             if n in Terminals:
-                print "yacc: Warning. Token '%s' multiply defined." % n
+                print("yacc: Warning. Token '%s' multiply defined." % n)
             Terminals[n] = [ ]
 
         Terminals['error'] = [ ]
@@ -2096,7 +2096,7 @@ def yacc(method=default_lr, debug=yaccdebug, module=None, tabmodule=tab_module, 
         # Get the precedence map (if any)
         prec = ldict.get("precedence",None)
         if prec:
-            if not (isinstance(prec,types.ListType) or isinstance(prec,types.TupleType)):
+            if not (isinstance(prec,list) or isinstance(prec,tuple)):
                 raise YaccError("precedence must be a list or tuple.")
             add_precedence(prec)
             Signature.update(repr(prec))
@@ -2114,19 +2114,19 @@ def yacc(method=default_lr, debug=yaccdebug, module=None, tabmodule=tab_module, 
                 ismethod = 1
             else:
                 raise YaccError("'p_error' defined, but is not a function or method.")
-            eline = ef.func_code.co_firstlineno
-            efile = ef.func_code.co_filename
+            eline = ef.__code__.co_firstlineno
+            efile = ef.__code__.co_filename
             files[efile] = None
 
-            if (ef.func_code.co_argcount != 1+ismethod):
+            if (ef.__code__.co_argcount != 1+ismethod):
                 raise YaccError("%s:%d: p_error() requires 1 argument." % (efile,eline))
             global Errorfunc
             Errorfunc = ef
         else:
-            print "yacc: Warning. no p_error() function is defined."
+            print("yacc: Warning. no p_error() function is defined.")
 
         # Get the list of built-in functions with p_ prefix
-        symbols = [ldict[f] for f in ldict.keys()
+        symbols = [ldict[f] for f in list(ldict.keys())
                if (type(ldict[f]) in (types.FunctionType, types.MethodType) and ldict[f].__name__[:2] == 'p_'
                    and ldict[f].__name__ != 'p_error')]
 
@@ -2135,19 +2135,20 @@ def yacc(method=default_lr, debug=yaccdebug, module=None, tabmodule=tab_module, 
             raise YaccError("no rules of the form p_rulename are defined.")
 
         # Sort the symbols by line number
-        symbols.sort(lambda x,y: cmp(x.func_code.co_firstlineno,y.func_code.co_firstlineno))
+        #symbols.sort(lambda x,y: cmp(x.__code__.co_firstlineno,y.__code__.co_firstlineno))
+        symbols.sort(key=lambda x: x.__code__.co_firstlineno)
 
         # Add all of the symbols to the grammar
         for f in symbols:
             if (add_function(f)) < 0:
                 error += 1
             else:
-                files[f.func_code.co_filename] = None
+                files[f.__code__.co_filename] = None
 
         # Make a signature of the docstrings
         for f in symbols:
             if f.__doc__:
-                Signature.update(f.__doc__)
+                Signature.update(f.__doc__.encode('utf-8'))
 
         lr_init_vars()
 
@@ -2157,7 +2158,7 @@ def yacc(method=default_lr, debug=yaccdebug, module=None, tabmodule=tab_module, 
         if not lr_read_tables(tabmodule):
 
             # Validate files
-            for filename in files.keys():
+            for filename in list(files.keys()):
                 if not validate_file(filename):
                     error = 1
 
@@ -2169,7 +2170,7 @@ def yacc(method=default_lr, debug=yaccdebug, module=None, tabmodule=tab_module, 
 
             augment_grammar(start)
             error = verify_productions(cycle_check=check_recursion)
-            otherfunc = [ldict[f] for f in ldict.keys()
+            otherfunc = [ldict[f] for f in list(ldict.keys())
                if (type(f) in (types.FunctionType,types.MethodType) and ldict[f].__name__[:2] != 'p_')]
 
             if error:
@@ -2194,8 +2195,8 @@ def yacc(method=default_lr, debug=yaccdebug, module=None, tabmodule=tab_module, 
                     f.write("\n\n")
                     f.write(_vf.getvalue())
                     f.close()
-                except IOError,e:
-                    print "yacc: can't create '%s'" % debugfile,e
+                except IOError as e:
+                    print("yacc: can't create '%s'" % debugfile,e)
 
     # Made it here.   Create a parser object and set up its internal state.
     # Set global parse() method to bound method of parser object.
